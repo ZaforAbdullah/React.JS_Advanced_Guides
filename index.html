@@ -2,10 +2,20 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>React.JS Main_Concepts</title>
+    <title>React.JS Advanced Guides</title>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js" crossorigin></script>
+    <style>
+      html, body, #root {
+        width: 100%;
+        height: 100%;
+      }
+
+      .toolbar {
+        border: 1px solid #000000;
+      }
+      </style>
   </head>
   <body>
     <div id="root">
@@ -14,86 +24,289 @@
 
     <!-- Load our React component. -->
     <script type="text/babel">
-      class ErrorBoundary extends React.Component {
-        constructor(props) {
-          super(props);
-          this.state = { error: null, errorInfo: null };
-        }
-        
-        componentDidCatch(error, errorInfo) {
-          // Catch errors in any components below and re-render with error message
-          this.setState({
-            error: error,
-            errorInfo: errorInfo
-          })
-          // You can also log error messages to an error reporting service here
-        }
-        
+      /*
+      //Theme Props passing without Context
+      class App extends React.Component {
         render() {
-          if (this.state.errorInfo) {
-            // Error path
-            return (
-              <div>
-                <h2>Something went wrong.</h2>
-                <details style={{ whiteSpace: 'pre-wrap' }}>
-                  {this.state.error && this.state.error.toString()}
-                  <br />
-                  {this.state.errorInfo.componentStack}
-                </details>
-              </div>
-            );
-          }
-          // Normally, just render children
-          return this.props.children;
-        }  
-      }
-      
-      class BuggyCounter extends React.Component {
-        constructor(props) {
-          super(props);
-          this.state = { counter: 0 };
-          this.handleClick = this.handleClick.bind(this);
-        }
-        
-        handleClick() {
-          this.setState(({counter}) => ({
-            counter: counter + 1
-          }));
-        }
-        
-        render() {
-          if (this.state.counter === 5) {
-            // Simulate a JS error
-            throw new Error('I crashed!');
-          }
-          return <h1 onClick={this.handleClick}>{this.state.counter}</h1>;
+          return <Toolbar theme="dark" />;
         }
       }
-      
-      function App() {
+
+      function Toolbar(props) {
+        // The Toolbar component must take an extra "theme" prop
+        // and pass it to the ThemedButton. This can become painful
+        // if every single button in the app needs to know the theme
+        // because it would have to be passed through all components.
         return (
           <div>
-            <p>
-              <b>
-                This is an example of error boundaries in React 16.
-                <br /><br />
-                Click on the numbers to increase the counters.
-                <br />
-                The counter is programmed to throw when it reaches 5. This simulates a JavaScript error in a component.
-              </b>
-            </p>
-            <hr />
-            <ErrorBoundary>
-              <p>These two counters are inside the same error boundary. If one crashes, the error boundary will replace both of them.</p>
-              <BuggyCounter />
-              <BuggyCounter />
-            </ErrorBoundary>
-            <hr />
-            <p>These two counters are each inside of their own error boundary. So if one crashes, the other is not affected.</p>
-            <ErrorBoundary><BuggyCounter /></ErrorBoundary>
-            <ErrorBoundary><BuggyCounter /></ErrorBoundary>
+            <ThemedButton theme={props.theme} />
           </div>
         );
+      }
+
+      class ThemedButton extends React.Component {
+        render() {
+          return <Button theme={this.props.theme} />;
+        }
+      }
+      */
+
+      /* 
+      Theme props/value with context shared globally
+      // Context lets us pass a value deep into the component tree
+      // without explicitly threading it through every component.
+      // Create a context for the current theme (with "light" as the default).
+      const ThemeContext = React.createContext('light');
+
+      class App extends React.Component {
+        render() {
+          // Use a Provider to pass the current theme to the tree below.
+          // Any component can read it, no matter how deep it is.
+          // In this example, we're passing "dark" as the current value.
+          return (
+            <ThemeContext.Provider value="dark">
+              <Toolbar />
+            </ThemeContext.Provider>
+          );
+        }
+      }
+
+      // A component in the middle doesn't have to
+      // pass the theme down explicitly anymore.
+      function Toolbar() {
+        return (
+          <div>
+            <ThemedButton />
+          </div>
+        );
+      }
+
+      class ThemedButton extends React.Component {
+        // Assign a contextType to read the current theme context.
+        // React will find the closest theme Provider above and use its value.
+        // In this example, the current theme is "dark".
+        static contextType = ThemeContext;
+        render() {
+          return <Button theme={this.context} />;
+        }
+      }
+      */
+
+      /*
+      Dynamic Context
+      const themes = {
+        light: {
+          background: "#eeeeee",
+          color: "#000000"
+        },
+        dark: {
+          background: "#222222",
+          color: "#ffffff"
+        }
+      };
+
+      const ThemeContext = React.createContext(
+        themes.dark // default value
+      );
+
+      class ThemedButton extends React.Component {
+        render() {
+          let props = this.props;
+          let theme = this.context;
+          return (
+            <button
+              {...props}
+              style={{ backgroundColor: theme.background, color: theme.color }}
+            />
+          );
+        }
+      }
+      ThemedButton.contextType = ThemeContext;
+
+      // An intermediate component that uses the ThemedButton
+      function Toolbar(props) {
+        return (
+          <div className="toolbar">
+            <ThemedButton onClick={props.changeTheme}>Change Theme</ThemedButton>
+          </div>
+        );
+      }
+
+      class App extends React.Component {
+        constructor(props) {
+          super(props);
+          this.state = {
+            theme: themes.light
+          };
+        
+          this.toggleTheme = () => {
+            this.setState((state) => ({
+              theme: state.theme === themes.dark ? themes.light : themes.dark
+            }));
+          };
+        }
+      
+        render() {
+          // The ThemedButton button inside the ThemeProvider
+          // uses the theme from state while the one outside uses
+          // the default dark theme
+          return (
+            <div>
+              <ThemeContext.Provider value={this.state.theme}>
+                <Toolbar changeTheme={this.toggleTheme} />
+              </ThemeContext.Provider>
+              <ThemedButton>Outside Button</ThemedButton>
+            </div>
+          );
+        }
+      }
+      */
+
+      /*
+      Update Context from nested component
+      const themes = {
+        light: {
+          foreground: "#000000",
+          background: "#eeeeee",
+          color: "#000000"
+        },
+        dark: {
+          foreground: "#ffffff",
+          background: "#222222",
+          color: "#ffffff"
+        }
+      };
+
+      // Make sure the shape of the default value passed to
+      // createContext matches the shape that the consumers expect!
+      const ThemeContext = React.createContext({
+        theme: themes.dark,
+        toggleTheme: () => {}
+      });
+
+      class ThemeTogglerButton extends React.Component {
+        render() {
+          let props = this.props;
+          // The Theme Toggler Button receives not only the theme
+          // but also a toggleTheme function from the context
+          let { theme, toggleTheme } = this.context;
+          return (
+            <button
+              {...props}
+              onClick={toggleTheme}
+              style={{ backgroundColor: theme.background, color: theme.color }}
+            >
+              Toggle Theme
+            </button>
+          );
+        }
+      }
+      ThemeTogglerButton.contextType = ThemeContext;
+
+      function Toolbar(props) {
+        return (
+          <div className="toolbar">
+            <ThemeTogglerButton>Change Theme</ThemeTogglerButton>
+          </div>
+        );
+      }
+
+      class App extends React.Component {
+        constructor(props) {
+          super(props);
+        
+          this.toggleTheme = () => {
+            this.setState((state) => ({
+              theme: state.theme === themes.dark ? themes.light : themes.dark
+            }));
+          };
+        
+          // State also contains the updater function so it will
+          // be passed down into the context provider
+          this.state = {
+            theme: themes.light,
+            toggleTheme: this.toggleTheme
+          };
+        }
+      
+        render() {
+          // The entire state is passed to the provider
+          return (
+            <ThemeContext.Provider value={this.state}>
+              <Toolbar />
+            </ThemeContext.Provider>
+          );
+        }
+      }
+      */
+
+      // Consuming Multiple Contexts
+      const themes = {
+        light: {
+          background: "#eeeeee",
+          color: "#000000"
+        },
+        dark: {
+          background: "#222222",
+          color: "#ffffff"
+        }
+      };
+
+      // Theme context, default to light theme
+      const ThemeContext = React.createContext(themes.dark);
+
+      // Signed-in user context
+      const UserContext = React.createContext({
+        name: "Guest"
+      });
+
+      // A component may consume multiple contexts
+      function Header() {
+        return (
+          <ThemeContext.Consumer>
+            {(theme) => (
+              <UserContext.Consumer>
+                {(user) => <Profile user={user} theme={theme} />}
+              </UserContext.Consumer>
+            )}
+          </ThemeContext.Consumer>
+        );
+      }
+
+      function Profile({ user, theme }) {
+        return (
+          <div
+            style={{
+              backgroundColor: theme.background,
+              color: theme.color
+            }}
+          >
+            {user}
+          </div>
+        );
+      }
+
+      class App extends React.Component {
+        constructor(props) {
+          super(props);
+          this.state = {
+            theme: themes.light,
+            signedInUser: "Zafor"
+          };
+        }
+      
+        render() {
+          const { signedInUser, theme } = this.state;
+        
+          // App component that provides initial context values
+          return (
+            <ThemeContext.Provider value={theme}>
+              <UserContext.Provider value={signedInUser}>
+                <Header />
+              </UserContext.Provider>
+            </ThemeContext.Provider>
+          );
+        }
       }
       
       const root = ReactDOM.createRoot(document.getElementById('root'));
